@@ -4,13 +4,73 @@ const Item = require("../models/Item");
 const Image = require("../models/Image");
 const Feature = require("../models/Feature");
 const Activity = require("../models/Activity");
+const Users= require("../models/Users");
 const fs = require("fs-extra");
 const path = require("path");
+const bcrypt = require("bcryptjs");
 
 module.exports = {
   //Controller
+  viewSignin: (req, res) => {
+    try {
+      const alertMessage = req.flash("alertMessage");
+      const alertStatus = req.flash("alertStatus");
+      const alert = { message: alertMessage, status: alertStatus };
+      if(req.session.user == null || req.session.user == undefined){
+        res.render("index", { alert, title: "Staycation | Login" });
+      }else{
+        res.redirect("/admin/dashboard");
+      }
+    } catch (error) {
+      res.redirect("/admin/sigin");
+    }
+  },
+
+  actionSignin: async (req, res) => {
+    try {
+      const {username, password } = req.body;
+      const user = await Users.findOne({username: username});
+      if(!user){
+        req.flash("alertMessage", "Username Yang Anda Masukan Tidak Ada !!");
+        req.flash("alertStatus", "danger");
+        res.redirect("/admin/signin");
+        return;
+      }
+      const isPasswordMatch = await bcrypt.compare(password, user.password);
+      if(!isPasswordMatch) {
+        req.flash("alertMessage", "Password Yang Anda Masukan Salah !!");
+        req.flash("alertStatus", "danger");
+        res.redirect("/admin/signin");
+        return;
+      }
+  
+      req.session.user = {
+        id : user.id,
+        username : user.username
+      }
+
+      res.redirect("/admin/dashboard");
+    } catch (error) {
+      res.redirect("/admin/signin");
+    }
+  },
+
+  actionLogout: (req, res) => {
+    // req.flash("alertMessage", "Anda Berhasil Logout !!");
+    // req.flash("alertStatus", "info");
+    req.session.destroy();
+    res.redirect("/admin/signin");
+  },
+
   viewDashboard: (req, res) => {
-    res.render("admin/dashboard/view_dashboard", { title: "Staycation | Dashboard" });
+   try {
+    res.render("admin/dashboard/view_dashboard", { 
+      title: "Staycation | Dashboard", 
+      user : req.session.user
+    });
+   } catch (error) {
+    
+   }
   },
 
   //1. Category Controller
@@ -20,7 +80,7 @@ module.exports = {
       const alertMessage = req.flash("alertMessage");
       const alertStatus = req.flash("alertStatus");
       const alert = { message: alertMessage, status: alertStatus };
-      res.render("admin/category/view_category", { category, alert, title: "Staycation | Category" });
+      res.render("admin/category/view_category", { category, alert, title: "Staycation | Category",  user : req.session.user });
     } catch (error) {
       res.redirect("/admin/category");
     }
@@ -79,7 +139,7 @@ module.exports = {
       const alertMessage = req.flash("alertMessage");
       const alertStatus = req.flash("alertStatus");
       const alert = { message: alertMessage, status: alertStatus };
-      res.render("admin/bank/view_bank", { bank, alert, title: "Staycation | Bank" });
+      res.render("admin/bank/view_bank", { bank, alert, title: "Staycation | Bank", user : req.session.user });
     } catch (error) {
       req.flash("alertMessage", `${error.message}`);
       req.flash("alertStatus", "danger");
@@ -162,7 +222,7 @@ module.exports = {
       const alertMessage = req.flash("alertMessage");
       const alertStatus = req.flash("alertStatus");
       const alert = { message: alertMessage, status: alertStatus };
-      res.render("admin/item/view_item", { title: "Staycation | Item", category, alert, item, action: "view" });
+      res.render("admin/item/view_item", { title: "Staycation | Item", category, alert, item, action: "view",  user : req.session.user });
     } catch (error) {
       req.flash("alertMessage", `${error.message}`);
       req.flash("alertStatus", "danger");
@@ -210,7 +270,7 @@ module.exports = {
       const alertMessage = req.flash("alertMessage");
       const alertStatus = req.flash("alertStatus");
       const alert = { message: alertMessage, status: alertStatus };
-      res.render("admin/item/view_item", { title: "Staycation | Show Item", alert, item, action: "show image" });
+      res.render("admin/item/view_item", { title: "Staycation | Show Item", alert, item, action: "show image",  user : req.session.user });
     } catch (error) {
       req.flash("alertMessage", `${error.message}`);
       req.flash("alertStatus", "danger");
@@ -227,7 +287,7 @@ module.exports = {
       const alertMessage = req.flash("alertMessage");
       const alertStatus = req.flash("alertStatus");
       const alert = { message: alertMessage, status: alertStatus };
-      res.render("admin/item/view_item", { title: "Staycation | Edit Item", alert, item, category, action: "edit" });
+      res.render("admin/item/view_item", { title: "Staycation | Edit Item", alert, item, category, action: "edit",user : req.session.user });
     } catch (error) {
       req.flash("alertMessage", `${error.message}`);
       req.flash("alertStatus", "danger");
@@ -320,6 +380,7 @@ module.exports = {
         itemId,
         feature,
         activity,
+        user : req.session.user
       });
     } catch (error) {
       req.flash("alertMessage", `${error.message}`);
@@ -491,6 +552,6 @@ module.exports = {
   },
 
   viewBooking: (req, res) => {
-    res.render("admin/booking/view_booking", { title: "Staycation | Booking" });
+    res.render("admin/booking/view_booking", { title: "Staycation | Booking",  user : req.session.user });
   },
 };
